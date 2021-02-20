@@ -25,20 +25,30 @@ class CarListView(web.View):
 
 
 class CarDetailView(web.View):
+    async def get_car(self):
+        id = self.request.match_info['id']
+        car = session.query(Car).get(id)
+        if not car:
+            raise web.HTTPNotFound()
+        return car
+
     async def get(self):
-        pass
+        car = await self.get_car()
+        return web.json_response(car.json())
 
     async def patch(self):
         pass
 
     async def delete(self):
-        pass
+        car = await self.get_car()
+        session.delete(car)
+        return web.Response(status=204)
 
 
 app = web.Application()
 app.add_routes([
     web.view('/cars/', CarListView),
-    web.view('/cars/<id>', CarDetailView),
+    web.view('/cars/{id}/', CarDetailView),
 ])
 
 if __name__ == '__main__':
