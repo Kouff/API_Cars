@@ -6,8 +6,22 @@ from db import session, engine, Base, Car
 
 
 class CarListView(web.View):
+    search_fields = ['manufacturer', 'model', 'color']
+    year_from_field = 'year_from'
+    year_to_field = 'year_to'
+
     async def get(self):
-        cars = session.query(Car).all()
+        query = session.query(Car)
+        for field in self.search_fields:
+            if field in self.request.rel_url.query:
+                query = query.filter(getattr(Car, field) == self.request.rel_url.query[field])
+        year_from = self.request.rel_url.query.get(self.year_from_field)
+        year_to = self.request.rel_url.query.get(self.year_to_field)
+        if year_from:
+            query = query.filter(Car.year >= int(year_from))
+        if year_to:
+            query = query.filter(Car.year <= int(year_to))
+        cars = query.all()
         return web.json_response([car.json() for car in cars])
 
     async def post(self):
