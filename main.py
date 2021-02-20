@@ -1,19 +1,5 @@
 from aiohttp import web
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, String, create_engine
-
-engine = create_engine('sqlite:///db.sqlite', echo=True)
-Base = declarative_base()
-
-
-class Car(Base):
-    __tablename__ = "cars"
-    id = Column(Integer, primary_key=True)
-    vin_code = Column(String, unique=True)
-    manufacturer = Column(String)
-    model = Column(String)
-    year = Column(Integer)
-    color = Column(String)
+from db import session, engine, Base, Car
 
 
 class CarListView(web.View):
@@ -37,8 +23,8 @@ class CarDetailView(web.View):
 
 app = web.Application()
 app.add_routes([
-    web.view('cars/', CarListView),  # POST GET
-    web.view('cars/<id>', CarDetailView),  # GET PATCH DELETE
+    web.view('/cars/', CarListView),
+    web.view('/cars/<id>', CarDetailView),
 ])
 
 if __name__ == '__main__':
