@@ -37,7 +37,18 @@ class CarDetailView(web.View):
         return web.json_response(car.json())
 
     async def patch(self):
-        pass
+        car = await self.get_car()
+        data = await self.request.json()
+        validated_data = await Car.check_data_to_update(data)
+        for field, value in validated_data.items():
+            setattr(car, field, value)
+        try:
+            session.commit()
+        except IntegrityError:
+            session.rollback()
+            message = {'vin_code': 'This field must be unique'}
+            raise web.HTTPBadRequest(text=json.dumps(message), content_type='application/json')
+        return web.json_response(car.json())
 
     async def delete(self):
         car = await self.get_car()

@@ -34,6 +34,16 @@ class Car(Base):
             raise web.HTTPBadRequest(text=json.dumps(messages), content_type='application/json')
         return {field: data[field] for field in Car.fields}
 
+    @classmethod
+    async def check_data_to_update(cls, data: dict) -> dict:
+        messages = {}
+        for field, field_type in cls.fields.items():
+            if field in data and not isinstance(data[field], field_type):
+                messages[field] = f'This field must be {field_type.__name__}'
+        if messages:
+            raise web.HTTPBadRequest(text=json.dumps(messages), content_type='application/json')
+        return {key: data[key] for key in data if key in cls.fields}
+
     def json(self) -> dict:
         return {
             'id': self.id,
