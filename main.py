@@ -2,6 +2,8 @@ import json
 
 from aiohttp import web
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm.exc import NoResultFound
+
 from db import session, engine, Base, Car
 
 
@@ -48,9 +50,10 @@ class CarDetailView(web.View):
     """Retrieve, update and delete a car object"""
 
     async def get_car(self):
-        id = self.request.match_info['id']  # get id from url
-        car = session.query(Car).get(id)  # get a car
-        if not car:
+        vin_code = self.request.match_info['vin_code']  # get id from url
+        try:
+            car = session.query(Car).filter(Car.vin_code == vin_code).one()  # get a car
+        except NoResultFound:
             raise web.HTTPNotFound()  # send a response with status 404 if the car is not found
         return car
 
@@ -82,7 +85,7 @@ class CarDetailView(web.View):
 app = web.Application()
 app.add_routes([
     web.view('/cars/', CarListView),
-    web.view('/cars/{id}/', CarDetailView),
+    web.view('/cars/{vin_code}/', CarDetailView),
 ])
 
 if __name__ == '__main__':

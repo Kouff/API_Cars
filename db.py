@@ -46,7 +46,6 @@ class Car(Base):
 
     def json(self) -> dict:
         return {
-            'id': self.id,
             'vin_code': self.vin_code,
             'manufacturer': self.manufacturer,
             'model': self.model,
