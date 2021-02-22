@@ -3,8 +3,8 @@
 Web framework: AioHTTP.
 
 The repository has branches:
-* master (without docker)
-* with_docker_and_redis (this code but in docker container and using redis instead of dict from python)
+* master (with sqlite3 and without docker)
+* with_docker_and_redis (this code but in docker container and using MongoDB instead of sqlite3)
 
 Clone a project and move to it:
 
@@ -22,6 +22,6 @@ Requests:
 * **POST** http://127.0.0.1:8080/cars/ - create a new car object (the car object has fields: **vin_code**, **manufacturer**, **model**, **year**, **color**).
 * **GET** http://127.0.0.1:8080/cars/ - show all the car objects. 
 * **GET** http://127.0.0.1:8080/cars/?manufacturer=BMW&model=X5&year_from=1999&year_to=2010&color=yellow - show all the filtered car objects.
-* **GET** http://127.0.0.1:8080/cars/<id>/ - show a car objects (**id** is a car id). 
-* **PATCH** http://127.0.0.1:8080/cars/<id>/ - update fields in a car objects (**id** is a car id). 
-* **DELETE** http://127.0.0.1:8080/cars/<id>/ - delete a car objects (**id** is a car id). 
+* **GET** http://127.0.0.1:8080/cars/{code}/ - show a car objects (**code** is a car vin_code). 
+* **PATCH** http://127.0.0.1:8080/cars/{code}/ - update fields in a car objects (**code** is a car vin_code). 
+* **DELETE** http://127.0.0.1:8080/cars/{code}/ - delete a car objects (**code** is a car vin_code). 
