@@ -1,8 +1,5 @@
-import json
-
 from aiohttp import web
-from sqlalchemy.exc import IntegrityError
-from db import session, engine, Base, Car
+from db import collection, Car
 
 
 class CarListView(web.View):
@@ -12,79 +9,68 @@ class CarListView(web.View):
     year_to_field = 'year_to'
 
     async def get_cars(self):
-        query = session.query(Car)
+        filter = {}
         for field in self.search_fields:
             if field in self.request.rel_url.query:
-                query = query.filter(
-                    getattr(Car, field) == self.request.rel_url.query[field])  # add a filter to query
+                filter[field] = self.request.rel_url.query[field]  # add a filter
         year_from = self.request.rel_url.query.get(self.year_from_field)
         year_to = self.request.rel_url.query.get(self.year_to_field)
-        if year_from:
-            query = query.filter(Car.year >= int(year_from))  # add a filter to query
-        if year_to:
-            query = query.filter(Car.year <= int(year_to))  # add a filter to query
-        return query.all()
+        if year_from and year_from.isdigit() and year_to and year_to.isdigit():
+            filter['year'] = {'$gte': int(year_from), '$lte': int(year_to)}  # add a filter
+        elif year_from and year_from.isdigit():
+            filter['year'] = {'$gte': int(year_from)}  # add a filter
+        elif year_to and year_to.isdigit():
+            filter['year'] = {'$lte': int(year_to)}  # add a filter
+        return [car for car in collection.find(filter, {'_id': 0})]
 
     async def get(self):
         cars = await self.get_cars()  # get cars
-        return web.json_response([car.json() for car in cars])
+        return web.json_response(cars)
 
     async def post(self):
         data = await self.request.json()  # get data
         validated_data = await Car.check_data_to_create(data)  # check the data
-        car = Car(**validated_data)  # create a car instance
-        session.add(car)  # add the car instance to db
-        try:
-            session.commit()  # send to db
-        except IntegrityError:
-            session.rollback()
-            message = {'vin_code': 'This field must be unique'}
-            raise web.HTTPBadRequest(text=json.dumps(message),
-                                     content_type='application/json')  # send a response with a message
-        return web.json_response(car.json())
+        collection.insert_one(validated_data.copy())
+        # del validated_data['_id']
+        return web.json_response(validated_data)
 
 
 class CarDetailView(web.View):
     """Retrieve, update and delete a car object"""
 
-    async def get_car(self):
-        id = self.request.match_info['id']  # get id from url
-        car = session.query(Car).get(id)  # get a car
-        if not car:
-            raise web.HTTPNotFound()  # send a response with status 404 if the car is not found
-        return car
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.vin_code = self.request.match_info['vin_code']  # get id from url
 
     async def get(self):
-        car = await self.get_car()  # get a car
-        return web.json_response(car.json())
+        car = collection.find_one({'vin_code': self.vin_code}, {'_id': 0})  # get a car
+        if not car:
+            raise web.HTTPNotFound()  # send a response with status 404 if the car is not found
+        return web.json_response(car)
 
     async def patch(self):
-        car = await self.get_car()  # get a car
         data = await self.request.json()  # get data
-        validated_data = await Car.check_data_to_update(data)  # check the data
-        for field, value in validated_data.items():
-            setattr(car, field, value)  # update the car fields
-        try:
-            session.commit()  # send to db
-        except IntegrityError:
-            session.rollback()
-            message = {'vin_code': 'This field must be unique'}
-            raise web.HTTPBadRequest(
-                text=json.dumps(message), content_type='application/json')  # send a response with a message
-        return web.json_response(car.json())
+        validated_data = await Car.check_data_to_update(data, self.vin_code)  # check the data
+        # get and update the car fields
+        car = collection.find_one_and_update({'vin_code': self.vin_code}, {'$set': validated_data})
+        if car is None:
+            raise web.HTTPNotFound()  # send a response with status 404 if the car is not found
+        del car['_id']
+        car.update(validated_data)
+        return web.json_response(car)
 
     async def delete(self):
-        car = await self.get_car()  # get a car
-        session.delete(car)  # delete the car
+        car = collection.find_one_and_delete({'vin_code': self.vin_code})  # delete the car
+        if car is None:
+            raise web.HTTPNotFound()  # send a response with status 404 if the car is not found
         return web.Response(status=204)
 
 
 app = web.Application()
 app.add_routes([
     web.view('/cars/', CarListView),
-    web.view('/cars/{id}/', CarDetailView),
+    web.view('/cars/{vin_code}/', CarDetailView),
 ])
 
 if __name__ == '__main__':
-    Base.metadata.create_all(engine)
     web.run_app(app)
