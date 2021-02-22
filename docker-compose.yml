@@ -1,0 +1,23 @@
+version: '3.7'
+
+services:
+  mongodb:
+    image: mongo:4.0.8
+    container_name: mongodb
+    command: mongod --auth
+    env_file: database.conf
+    volumes:
+      - mongodbdata:/data/db
+  api_cars:
+    build: .
+    env_file: database.conf
+    command: python main.py
+    volumes:
+      - .:/api_cars/
+    ports:
+      - 8080:8080
+    depends_on:
+      - mongodb
+
+volumes:
+  mongodbdata:
